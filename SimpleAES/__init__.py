@@ -3,7 +3,12 @@ import struct
 import base64
 import hashlib
 import warnings
-from StringIO import StringIO
+
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
+
 from Crypto.Cipher import AES
 from .version import VERSION
 from .exceptions import EncryptionError, DecryptionError
@@ -32,7 +37,7 @@ def check_output(cmd, input_=None, *popenargs, **kwargs):
 
 
 def _random_noise(len):
-    return ''.join(chr(random.randint(0, 0xFF)) for i in range(len))
+    return ''.join(chr(random.randint(0, 0xFF)) for i in range(len)).encode()
 
 
 class SimpleAES(object):
@@ -41,6 +46,7 @@ class SimpleAES(object):
         self._password = password
 
     def encrypt(self, string):
+        string = string.encode()
         """Encrypts a string using AES-256."""
         try:
             envvar = hashlib.sha256(_random_noise(16)).hexdigest()
@@ -55,8 +61,7 @@ class SimpleAES(object):
 
     def decrypt(self, b64_ciphertext, legacy='auto'):
         """Decrypts a string using AES-256."""
-        if legacy is True or (legacy == 'auto' and
-                              not b64_ciphertext.startswith('U2Fsd')):
+        if legacy is True or (legacy == 'auto' and not b64_ciphertext.startswith(b'U2Fsd')):
             return self._legacy_decrypt(b64_ciphertext)
 
         try:
@@ -64,7 +69,7 @@ class SimpleAES(object):
             plaintext = check_output([
                 'openssl', 'enc', '-d', '-aes-256-cbc', '-a', '-pass',
                 'env:{0}'.format(envvar)],
-                input_=b64_ciphertext + '\n',
+                input_=b64_ciphertext + b'\n',
                 env={envvar: self._password})
             return plaintext
         except:
@@ -128,4 +133,4 @@ if __name__ == '__main__':
             ciphertext = aes.encrypt(input)
             text = aes.decrypt(ciphertext)
             assert text == input
-    print 'All OK'
+    print('All OK')
