@@ -12,12 +12,15 @@ except ImportError:
 from Crypto.Cipher import AES
 from .version import VERSION
 from .exceptions import EncryptionError, DecryptionError
+from sys import version_info as python_version
 
 __title__ = 'SimpleAES'
 __version__ = VERSION
 __author__ = 'Vincent Driessen'
 __license__ = 'BSD'
 __copyright__ = 'Copyright 2012 Vincent Driessen'
+
+python_3 = python_version >= (3, 0)
 
 
 def check_output(cmd, input_=None, *popenargs, **kwargs):
@@ -37,7 +40,8 @@ def check_output(cmd, input_=None, *popenargs, **kwargs):
 
 
 def _random_noise(len):
-    return ''.join(chr(random.randint(0, 0xFF)) for i in range(len)).encode()
+    s = ''.join(chr(random.randint(0, 0xFF)) for i in range(len))
+    return s.encode() if python_3 else s
 
 
 class SimpleAES(object):
@@ -46,7 +50,8 @@ class SimpleAES(object):
         self._password = password
 
     def encrypt(self, string):
-        string = string.encode()
+        if python_3:
+            string = string.encode()
         """Encrypts a string using AES-256."""
         try:
             envvar = hashlib.sha256(_random_noise(16)).hexdigest()
@@ -61,15 +66,17 @@ class SimpleAES(object):
 
     def decrypt(self, b64_ciphertext, legacy='auto'):
         """Decrypts a string using AES-256."""
-        if legacy is True or (legacy == 'auto' and not b64_ciphertext.startswith(b'U2Fsd')):
+        c = b'U2Fsd' if python_3 else 'U2Fsd'
+        if legacy is True or (legacy == 'auto' and not b64_ciphertext.startswith(c)):
             return self._legacy_decrypt(b64_ciphertext)
 
         try:
             envvar = hashlib.sha256(_random_noise(16)).hexdigest()
+            endline = b'\n' if python_3 else '\n'
             plaintext = check_output([
                 'openssl', 'enc', '-d', '-aes-256-cbc', '-a', '-pass',
                 'env:{0}'.format(envvar)],
-                input_=b64_ciphertext + b'\n',
+                input_=b64_ciphertext + endline,
                 env={envvar: self._password})
             return plaintext
         except:
@@ -134,3 +141,4 @@ if __name__ == '__main__':
             text = aes.decrypt(ciphertext)
             assert text == input
     print('All OK')
+
