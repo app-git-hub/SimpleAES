@@ -1,3 +1,7 @@
+## Why this fork?
+
+The creator hasn't accepted an import change, breaks compatibility with Python 3.x
+
 ## SimpleAES
 
 [AES-256](http://en.wikipedia.org/wiki/Advanced_Encryption_Standard) encryption
